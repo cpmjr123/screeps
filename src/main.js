@@ -2,6 +2,7 @@ var roleHarvester = require('role.harvester');
 var roleUpgrader = require('role.upgrader');
 var roleBuilder = require('role.builder');
 var spawnManager = require('manager.spawn');
+var roadManager = require('manager.road');
 module.exports.loop = function () {
 
     for (var name in Memory.creeps) {
@@ -17,6 +18,7 @@ module.exports.loop = function () {
                 spawnManager.run(spawn);
             }
         }
+        roadManager.run(spawn);
     }
 
     for (var name in Game.creeps) {
