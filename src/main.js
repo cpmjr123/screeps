@@ -13,12 +13,8 @@ module.exports.loop = function () {
     for (var name in Game.spawns) {
         var spawn = Game.spawns[name];
         if (spawn.spawning === null) {
-            if (spawn.energy >= 200) {
-                spawn.createCreep(
-                    ['WORK', 'CARRY', 'MOVE'],
-                    null,
-                    {role: 'harvester'}
-                );
+            if (spawn.energy >= 300) {
+                spawnManager.run(spawn);
             }
         }
     }
