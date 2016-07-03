@@ -5,7 +5,7 @@ var roadManager = {
         var sources = spawn.room.find(FIND_SOURCES_ACTIVE);
         sources.push(spawn.room.controller);
         var source = sources[Game.time % sources.length];
-        var path = source.room.findPath(spawn.pos, source.pos, {ignoreCreeps: true, ignore});
+        var path = source.room.findPath(spawn.pos, source.pos, {ignoreCreeps: true});
         path.splice(path.length - 1, 1);
         var roadFound = 0;
         var siteFound = false;
