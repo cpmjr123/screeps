@@ -4,6 +4,7 @@ var roleUpgrader = require('role.upgrader');
 var roadManager = require('manager.road');
 var spawnManager = require('manager.spawn');
 var extensionManager = require('manager.extension');
+var towerStructure = require('structure.tower');
 /**
  * @param {Source} source
  * @returns int traversableHarvestPoints
@@ -53,10 +54,10 @@ module.exports.loop = function () {
 
     // Grab resource node data
     populateSourceAttributes();
-    
+
     for (var name in Game.rooms) {
         var selectedRoom = Game.rooms[name];
-        
+
         extensionManager.run(selectedRoom);
     }
 
@@ -84,5 +85,12 @@ module.exports.loop = function () {
         } else if (creep.memory.role == 'upgrader') {
             roleUpgrader.run(creep);
         }
+    }
+
+    var towers = _.filter(Game.structures, function (o) {
+        return o.structureType == STRUCTURE_TOWER
+    });
+    for (var name in towers) {
+        towerStructure.run(towers[name]);
     }
 };

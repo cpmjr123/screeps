@@ -26,9 +26,9 @@ var roleUpgrader = {
                     }
                 }
 
-                var containers = source.pos.findInRange(FIND_STRUCTURES, {
+                var containers = source.pos.findInRange(FIND_STRUCTURES, 2, {
                     filter: (structure) => {
-                        return structure.structureType == STRUCTURE_CONTAINER && structure.store > 0;
+                        return structure.structureType == STRUCTURE_CONTAINER && structure.store.energy > 0;
                     }
                 });
 
