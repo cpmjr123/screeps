@@ -1,87 +1,74 @@
-const HARVESTER_ALLOCATION_PERCENTAGE = 0.35;
+const HARVESTER_ALLOCATION_PERCENTAGE = 0.5;
 const BUILDER_ALLOCATION_PERCENTAGE = 0.15;
-const UPGRADE_ALLOCATION_PERCENTAGE = 0.5;
+const UPGRADE_ALLOCATION_PERCENTAGE = 0.35;
+
+var factoryBodies = require('factory.bodies');
 
 var spawnManager = {
     /** @param {Spawn} spawn **/
     run: function (spawn) {
         /** @var {Source} source */
-        var sources = spawn.room.find(FIND_SOURCES_ACTIVE);
-        for (var index in sources) {
-            var source = sources[index];
-            var look = source.room.lookForAtArea(
-                LOOK_TERRAIN,
-                source.pos.y - 1,
-                source.pos.x - 1,
-                source.pos.y + 1,
-                source.pos.x + 1,
-                true // Return as array
-            );
-            var traversableHarvestPoints = 0;
-            for (var grids in look) {
-                if (look[grids].terrain != 'wall') {
-                    traversableHarvestPoints++;
+        var sources = Memory[spawn.room.name]['sources'];
+
+        var index = Memory[spawn.room.name].counter;
+
+        if (index == null) {
+            Memory[spawn.room.name].counter = 0;
+            index = Memory[spawn.room.name].counter;
+        }
+
+        //select a source
+        var selectedSource = Game.time % Object.keys(sources).length;
+        var source = sources[selectedSource];
+
+        var creepsAssignedToThisSource = _.filter(Game.creeps, function (o) {
+            return o.memory.source == source.id
+        });
+
+        if (creepsAssignedToThisSource.length > 0) {
+            var miners = _.filter(creepsAssignedToThisSource, function (o) {
+                return o.memory.role == 'miner'
+            });
+            var workParts = 0;
+            for (var minerIndex in miners) {
+                var body = miners[minerIndex].body;
+                for (var partsIndex in body) {
+                    if (body[partsIndex].type == WORK) {
+                        workParts++;
+                    }
                 }
             }
-            console.log('Found ' + traversableHarvestPoints + ' traversable points around ' + source.id);
-            var currentAllocation = _.filter(Game.creeps, (creep) => creep.memory.source == source.id);
-            var currentHarvesterAllocation = _.filter(currentAllocation, (creep) => creep.memory.role == 'harvester');
-            var currentBuilderAllocation = _.filter(currentAllocation, (creep) => creep.memory.role == 'builder');
-            var currentUpgraderAllocation = _.filter(currentAllocation, (creep) => creep.memory.role == 'upgrader');
-            console.log('Local harvesters' + currentHarvesterAllocation);
-            console.log('Local upgraders' + currentUpgraderAllocation);
-            console.log('Local builders' + currentBuilderAllocation);
-
-
-            var upgraderWorkerAllocation = Math.ceil(traversableHarvestPoints * UPGRADE_ALLOCATION_PERCENTAGE); // 1/3 of total node allocation
-
-            // 150 == approximate carry weight
-            upgraderWorkerAllocation += Math.ceil(
-                    (spawn.room.findPath(spawn.room.controller.pos, source.pos).length / 150)
-                ) * upgraderWorkerAllocation;
-
-            var spawned = false;
-
-            if (currentHarvesterAllocation.length < Math.ceil(traversableHarvestPoints * HARVESTER_ALLOCATION_PERCENTAGE)) {
-                console.log('Attempting to create harvester.');
-                var returnCode = spawn.createCreep(
-                    [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-                    null,
-                    {role: 'harvester', source: source.id}
-                );
-                spawned = true;
-                console.log('Return code: ' + returnCode);
-            } else if (currentBuilderAllocation.length < Math.ceil(traversableHarvestPoints * BUILDER_ALLOCATION_PERCENTAGE)) {
-                console.log('Attempting to create builder.');
-                var returnCode = spawn.createCreep(
-                    [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-                    null,
-                    {role: 'builder', source: source.id}
-                );
-                spawned = true;
-                console.log('Return code: ' + returnCode);
-            } else if (currentUpgraderAllocation.length < upgraderWorkerAllocation) {
-                console.log('Attempting to create upgrader.');
-                var returnCode = spawn.createCreep(
-                    [WORK, WORK, CARRY, CARRY, MOVE, MOVE],
-                    null,
-                    {role: 'upgrader', source: source.id}
-                );
-                spawned = true;
-                console.log('Return code: ' + returnCode);
-            } else {
-                console.log('Attempting to spawn soldier');
-                var returnCode = spawn.createCreep(
-                    [ATTACK, ATTACK, MOVE, MOVE, MOVE, MOVE, TOUGH, TOUGH, TOUGH, TOUGH],
-                    null,
-                    {role: 'shock-troop', squad: 1}
-                );
-                spawned = true;
-                console.log('Return code: ' + returnCode);
+            var workPartDeficiency = source.totalWorkPartsCount - workParts;
+            if (workPartDeficiency > 0 && source.maxAllowedWorkers > miners.length) {
+                var minerBody = factoryBodies.fetchMinerBody(spawn, workPartDeficiency);
+                spawn.createCreep(minerBody, null, {role: 'miner', source: source.id});
+                Memory[spawn.room.name].counter++;
+                return;
             }
-        }
-        if (spawned) {
-            console.log(spawn.id + ' has spawned something this tick.');
+
+            // Miners sufficiently saturating the node, figure out what to do next
+            var drones = _.filter(creepsAssignedToThisSource, function (o) {
+                return o.memory.role == 'drone'
+            });
+
+            // 2-3 drones per miner?
+            if (drones.length < miners.length * 2) {
+                spawn.createCreep([WORK, CARRY, MOVE], null, {role: 'drone', source: source.id});
+                return;
+            }
+
+            var upgraders = _.filter(creepsAssignedToThisSource, function (o) {
+                return o.memory.role == 'upgrader'
+            });
+
+            if (upgraders.length < 4) {
+                spawn.createCreep([WORK, CARRY, MOVE], null, {role: 'upgrader', source: source.id});
+            }
+
+        } else {
+            //spawn a drone, we've either just started or we're in emergency mode.
+            spawn.createCreep([CARRY, WORK, MOVE], null, {role: 'drone', source: source.id});
+            Memory[spawn.room.name].counter++;
             return;
         }
     }

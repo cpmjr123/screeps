@@ -1,10 +1,64 @@
-var roleHarvester = require('role.harvester');
+var roleDrone = require('role.drone');
+var roleMiner = require('role.miner');
 var roleUpgrader = require('role.upgrader');
-var roleBuilder = require('role.builder');
-var roleShockTroop = require('role.shocktroop');
-var spawnManager = require('manager.spawn');
 var roadManager = require('manager.road');
+var spawnManager = require('manager.spawn');
+var extensionManager = require('manager.extension');
+/**
+ * @param {Source} source
+ * @returns int traversableHarvestPoints
+ */
+function findTraversablePointsForSourceNode(source) {
+    var look = source.room.lookForAtArea(
+        LOOK_TERRAIN,
+        source.pos.y - 1,
+        source.pos.x - 1,
+        source.pos.y + 1,
+        source.pos.x + 1,
+        true // Return as array
+    );
+    var traversableHarvestPoints = 0;
+    for (var grids in look) {
+        if (look[grids].terrain != 'wall') {
+            traversableHarvestPoints++;
+        }
+    }
+    return traversableHarvestPoints;
+}
+function populateSourceAttributes() {
+    for (var name in Game.rooms) {
+        if (Game.time % 5 != 0) {
+            break;
+        }
+        var selectedRoom = Game.rooms[name];
+        if (Memory[selectedRoom.name] == null) {
+            Memory[selectedRoom.name] = {};
+            Memory[selectedRoom.name]['sources'] = {};
+            var sources = selectedRoom.find(FIND_SOURCES);
+            for (var sourceName in sources) {
+                var source = sources[sourceName];
+                var harvestablePoints = findTraversablePointsForSourceNode(source);
+                // total work parts required for efficient source burn out
+                var totalMinerParts = source.energyCapacity / ENERGY_REGEN_TIME / HARVEST_POWER;
+                Memory[selectedRoom.name]['sources'][sourceName] = {
+                    maxAllowedWorkers: harvestablePoints,
+                    totalWorkPartsCount: totalMinerParts,
+                    id: sources[sourceName].id
+                };
+            }
+        }
+    }
+}
 module.exports.loop = function () {
+
+    // Grab resource node data
+    populateSourceAttributes();
+    
+    for (var name in Game.rooms) {
+        var selectedRoom = Game.rooms[name];
+        
+        extensionManager.run(selectedRoom);
+    }
 
     for (var name in Memory.creeps) {
         if (Game.creeps[name] == undefined) {
@@ -13,25 +67,22 @@ module.exports.loop = function () {
     }
 
     for (var name in Game.spawns) {
+        /** @type {Spawn} spawn */
         var spawn = Game.spawns[name];
-        if (spawn.spawning === null) {
-            if (spawn.room.energyAvailable >= 400) {
-                spawnManager.run(spawn);
-            }
+        if (!spawn.spawning) {
+            spawnManager.run(spawn);
         }
         roadManager.run(spawn);
     }
 
     for (var name in Game.creeps) {
         var creep = Game.creeps[name];
-        if (creep.memory.role == 'upgrader') {
+        if (creep.memory.role == 'miner') {
+            roleMiner.run(creep);
+        } else if (creep.memory.role == 'drone') {
+            roleDrone.run(creep);
+        } else if (creep.memory.role == 'upgrader') {
             roleUpgrader.run(creep);
-        } else if (creep.memory.role == 'builder') {
-            roleBuilder.run(creep);
-        } else if (creep.memory.role == 'harvester') {
-            roleHarvester.run(creep);
-        } else if (creep.memory.role == 'shock-troop') {
-            roleShockTroop.run(creep);
         }
     }
 };
