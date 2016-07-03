@@ -1,58 +1,42 @@
-var extensionManager = {
-    /** @param {Room} room **/
-    run: function (room) {
+var roadManager = {
+    /** @param {Spawn} spawn **/
+    run: function (spawn) {
+        /** @var {Source} source */
+        var sources = spawn.room.find(FIND_SOURCES_ACTIVE);
+        sources.push(spawn.room.controller);
+        var source = sources[Game.time % sources.length];
+        var path = source.room.findPath(spawn.pos, source.pos, {ignoreCreeps: true, ignore});
+        path.splice(path.length - 1, 1);
+        var roadFound = 0;
+        var siteFound = false;
+        for (var index in path) {
+            var structure = spawn.room.lookForAt(LOOK_STRUCTURES, path[index].x, path[index].y);
+            if (structure == '' || structure.structureType != STRUCTURE_ROAD) {
+                if (spawn.room.lookForAt(LOOK_CONSTRUCTION_SITES, path[index].x, path[index].y) != '') {
+                    siteFound = true;
+                    break;
+                }
+            } else {
+                roadFound++;
+            }
+        }
 
-        var extensions = room.find(FIND_MY_STRUCTURES, {filter: {structureType: STRUCTURE_EXTENSION}});
-        var maximumExtensions = CONTROLLER_STRUCTURES.extension[room.controller.level];
-        // don't waste CPU on extensions we can't build
-        if (extensions.length >= maximumExtensions) {
+        if (siteFound) {
             return;
         }
-        var sitesPlaced = room.find(FIND_MY_CONSTRUCTION_SITES, {filter: {structureType: STRUCTURE_EXTENSION}});
 
-        var position = room.find(FIND_MY_SPAWNS)[0].pos;
-
-        if (sitesPlaced < maximumExtensions) {
-            var checkPosition = new RoomPosition(position.x - 1, position.y - 1, room.name);
-            if (room.createConstructionSite(checkPosition)) {
-                sitesPlaced++;
+        if (roadFound < path.length) {
+            for (var index in path) {
+                if (spawn.room.lookForAt(LOOK_STRUCTURES, path[index].x, path[index].y) != '') {
+                } else {
+                    console.log('Spawn road at ' + path[index].x + ',' + path[index].y + ':' + spawn.room.createConstructionSite(path[index].x, path[index].y, STRUCTURE_ROAD));
+                    break;
+                }
             }
-            checkPosition = new RoomPosition(position.x + 1, position.y - 1, room.name);
-            if (room.createConstructionSite(checkPosition)) {
-                sitesPlaced++;
-            }
-            checkPosition = new RoomPosition(position.x - 1, position.y + 1, room.name);
-            if (room.createConstructionSite(checkPosition)) {
-                sitesPlaced++;
-            }
-            checkPosition = new RoomPosition(position.x + 1, position.y + 1, room.name);
-            if (room.createConstructionSite(checkPosition)) {
-                sitesPlaced++;
-            }
-            console.log(sitesPlaced);
         } else {
-            return;
+            console.log('Road from ' + spawn + ' to ' + source + ' is already built.');
         }
-        // go up left.
-        // if not is wall
-        // if not construction site or structure != road
-        // place construction site
-        // go up right
-        // if not is wall
-        // if not construction site or structure != road
-        // place construction site
-        // go down left
-
-        // if not is wall
-        // if not construction site or structure != road
-        // place construction site
-        //go down right
-
-        // if not is wall
-        // if not construction site or structure != road
-        // place construction site
-        // do the same for up left
     }
 };
 
-module.exports = extensionManager;
+module.exports = roadManager;
