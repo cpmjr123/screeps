@@ -21,6 +21,7 @@ var roleDrone = {
             if (containers.length > 0) {
                 if (containers[0].transfer(creep, RESOURCE_ENERGY, creep.carryCapacity - creep.carry.energy) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(containers[0]);
+                    return;
                 }
             }
 

@@ -4,7 +4,7 @@ var roleUpgrader = require('role.upgrader');
 var roadManager = require('manager.road');
 var spawnManager = require('manager.spawn');
 var extensionManager = require('manager.extension');
-var towerStructure = require('structure.tower');
+// var towerStructure = require('structure.tower');
 /**
  * @param {Source} source
  * @returns int traversableHarvestPoints
@@ -87,10 +87,10 @@ module.exports.loop = function () {
         }
     }
 
-    var towers = _.filter(Game.structures, function (o) {
-        return o.structureType == STRUCTURE_TOWER
-    });
-    for (var name in towers) {
-        towerStructure.run(towers[name]);
-    }
+    // var towers = _.filter(Game.structures, function (o) {
+    //     return o.structureType == STRUCTURE_TOWER
+    // });
+    // for (var name in towers) {
+    //     towerStructure.run(towers[name]);
+    // }
 };
